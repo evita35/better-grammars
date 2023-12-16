@@ -1,0 +1,24 @@
+GrammarName
+RandomGrammar_3_9_110000001000010100000000000000000010010000
+
+Start Symbol
+A2
+
+Non-Terminals
+A2
+A1
+A0
+
+Terminals
+(
+)
+.
+
+Rules
+A0 -> ( A0 )
+A0 -> .
+A0 -> A1 A2
+A1 -> .
+A1 -> A0
+A2 -> A1
+A2 -> A1 A2

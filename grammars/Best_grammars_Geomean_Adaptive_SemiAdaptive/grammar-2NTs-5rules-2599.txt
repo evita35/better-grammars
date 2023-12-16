@@ -1,0 +1,21 @@
+GrammarName
+grammar-2NTs-5rules-2599
+
+Start Symbol
+A1
+
+Non-Terminals
+A1
+A0
+
+Terminals
+(
+)
+.
+
+Rules
+A1 -> ( A1 ) 
+A0 -> ( A1 ) 
+A1 -> A1 A0 
+A0 -> . 
+A1 -> A0 
