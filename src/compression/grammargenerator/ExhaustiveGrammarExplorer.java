@@ -29,7 +29,7 @@ public class ExhaustiveGrammarExplorer extends AbstractGrammarExplorer {
 		// Keep trying grammars and keep the best k grammars
 		// according to the given dataset
 		if (args.length < 4) {
-			System.out.println("Usage: ExhaustiveGrammarExplorer #nonterminals #rules keepBestK full-dataset [small-dataset] [rule-prob-model]");
+			System.out.println("Usage: ExhaustiveGrammarExplorer #nonterminals #rules keepBestgitggK full-dataset [small-dataset] [rule-prob-model]");
 			System.out.println("\t #rules can be p between 0 and 1 in which case each rule will be included at random with prob p");
 			System.out.println("\t rule-prob-model: one of 'static', 'semi-adaptive', 'adaptive'; default: adaptive ");
 			System.exit(1);
