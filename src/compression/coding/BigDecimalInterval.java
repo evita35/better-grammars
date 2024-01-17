@@ -7,12 +7,14 @@ import java.util.Objects;
 
 /**
  * A half-open interval [a,b) on the real line, represented by BigDecimal values
- * for lowerBound and length, so that [a,b) == [lowerBound, lowerBound + length)
+ * for lowerBound and length, so that [a,b) == [lowerBound, lowerBound + length).
  *
  * @author Sebastian Wild (wild@uwaterloo.ca)
  */
 public class BigDecimalInterval implements Interval {
 
+	/** Unit interval [0,1) */
+	public static final BigDecimalInterval UNIT_INTERVAL = new BigDecimalInterval(0, 1);
 	private final BigDecimal lowerBound;
 	private final BigDecimal length;
 	private final double lnLength;

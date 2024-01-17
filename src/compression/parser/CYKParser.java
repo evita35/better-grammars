@@ -10,8 +10,11 @@ import java.util.*;
 /**
  * @author Sebastian Wild (wild@liverpool.ac.uk)
  *
+ * @deprecated Use {@link SRFParser} instead. This class is just for educational purposes and not ready for production.
+ *
  * TODO: properly throw UnparsableExceptions
  */
+@Deprecated
 public class CYKParser<T> implements StochasticParser<T> {
 
     private final Grammar<T> grammar;
@@ -81,6 +84,11 @@ public class CYKParser<T> implements StochasticParser<T> {
         //TODO SPLIT RULES TO THOSE WITH 2 NONTERMINALS ON RHS
         //TODO RAISE AN EXCEPTION FOR THOSE RULES WHICH DO NOT COMPLY
 
+    }
+
+    @Override
+    public Grammar<T> getGrammar() {
+        return grammar;
     }
 
     @Override

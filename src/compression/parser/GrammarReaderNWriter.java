@@ -24,8 +24,7 @@ public class GrammarReaderNWriter {
 		GRAMMARNAME, STARTSYMBOL, NONTERMINALS, RULES, TERMINALS
 	}
 
-	public SecondaryStructureGrammar getGrammarFromFile() throws FileNotFoundException {
-		//Grammar<PairOfChar> grammar;
+	public SecondaryStructureGrammar getGrammarFromFile() throws IOException {
 		String grammarName = "";
 		String startSymbol = "";
 		List<NonTerminal> nonTerminals = new ArrayList<>();
@@ -70,19 +69,13 @@ public class GrammarReaderNWriter {
 							getRHS(line, nonTerminals, terminals)));
 				}
 			}
-			//
-		} catch (IOException e) {
-			throw new RuntimeException(e);
 		}
 
 		Grammar.Builder<Character> grammarFromFile = new Grammar.Builder<>(grammarName, new NonTerminal(startSymbol));
 		for (Rule rule : arrayListOfRules) {
 			grammarFromFile.addRule(rule);
 		}
-
-
-		SecondaryStructureGrammar GrammarFromFile = SecondaryStructureGrammar.fromCheap(grammarFromFile.build());
-		return GrammarFromFile;
+		return SecondaryStructureGrammar.fromCheap(grammarFromFile.build());
 	}
 
 	public File getFileName() {
@@ -90,7 +83,6 @@ public class GrammarReaderNWriter {
 	}
 
 	public void writeGrammarToFile(SecondaryStructureGrammar grammar) throws IOException {
-		//File grammarFile = new File(LocalConfig.GIT_ROOT+"/src/GrammarGenerator/ParsableGrammars/"+grammar.name+".txt");
 		try (BufferedWriter bf = new BufferedWriter(new FileWriter(grammarFile))) {
 			bf.write("GrammarName");
 			bf.newLine();
@@ -112,7 +104,6 @@ public class GrammarReaderNWriter {
 			bf.write("Terminals");
 			bf.newLine();
 			for (Terminal<Character> t : grammar.terminals) {
-//                System.out.println("value of t is "+ t.toString());
 				bf.write(t.getChars());
 				bf.newLine();
 			}

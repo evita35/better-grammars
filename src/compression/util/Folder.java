@@ -5,5 +5,4 @@ import java.util.Iterator;
 
 public interface Folder extends Iterable<File>  {
 
-    public Iterator<File> iterator();
 }

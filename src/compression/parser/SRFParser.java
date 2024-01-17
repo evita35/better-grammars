@@ -1,7 +1,5 @@
 package compression.parser;
 
-import compression.coding.BigDecimalInterval;
-import compression.coding.Interval;
 import compression.grammar.*;
 import compression.grammargenerator.UnparsableException;
 import compression.samplegrammars.model.RuleProbModel;
@@ -52,31 +50,14 @@ public class SRFParser<T> implements StochasticParser<T> {
     private final List<Rule> type4Rules;
 
     public SRFParser(final Grammar<T> grammar) {
-        this(grammar, null);
+        this(grammar, RuleProbModel.DONT_CARE);
     }
 
     public SRFParser(final Grammar<T> grammar, final RuleProbModel ruleProbModel) {
+        Objects.requireNonNull(grammar);
+        Objects.requireNonNull(ruleProbModel);
         this.grammar = grammar;
-
-        this.ruleProbModel = ruleProbModel != null ? ruleProbModel : new RuleProbModel() {
-
-            private final BigDecimalInterval unitInterval = new BigDecimalInterval(0, 1);
-
-            @Override
-            public Interval getIntervalFor(final Rule rule) {
-                return unitInterval;
-            }
-
-            @Override
-            public List<Interval> getIntervalList(final NonTerminal lhs) {
-                throw new UnsupportedOperationException("Not implemented.");
-            }
-
-            @Override
-            public List<Category> getRhsFor(final Interval interval, final NonTerminal lhs) {
-                throw new UnsupportedOperationException("Not implemented.");
-            }
-        };
+        this.ruleProbModel = ruleProbModel;
 
         sortedNonTerminals = new ArrayList<>();
         Collection<Rule> grammarRules = grammar.getAllRules();
@@ -134,19 +115,31 @@ public class SRFParser<T> implements StochasticParser<T> {
     }
 
     @Override
-    public List<Rule> leftmostDerivationFor(final List<Terminal<T>> word) throws UnparsableException {
-        return mostLikelyLeftmostDerivationFor(word);
+    public Grammar<T> getGrammar() {
+        return grammar;
     }
 
-
+    @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public boolean parsable(final List<Terminal<T>> word) {
-        // Can avoid the backtrace:
+        // Can avoid the backtrace in super.parsable()
         int n = word.size();
-        fillTable(word);
+        fillTableIgnoreProbs(word);
         int S = integerNonTerminalMap.get(grammar.getStartSymbol());
         return booleanArray[n][1][S];
     }
+
+    @Override
+    public List<Rule> leftmostDerivationFor(final List<Terminal<T>> word) throws UnparsableException {
+        if (ruleProbModel == null)
+            throw new UnsupportedOperationException("No rule probability model provided.");
+        int n = word.size();
+        fillTableIgnoreProbs(word);
+        List<Rule> derivation = new ArrayList<>();
+        backtraceDerivation(n, 1, grammar.getStartSymbol(), derivation);
+        return derivation;
+    }
+
 
     @Override
     public List<Rule> mostLikelyLeftmostDerivationFor(final List<Terminal<T>> word) throws UnparsableException {
@@ -224,21 +217,18 @@ public class SRFParser<T> implements StochasticParser<T> {
             NonTerminal C = (NonTerminal) rule.right[1];
             backtraceDerivation(p, s, B, result);
             backtraceDerivation(l - p, s + p, C, result);
-        } else if(type2Rules.contains(rule)) {
+        } else if (type2Rules.contains(rule)) {
             // A -> a
-            return;
-        }
-        else if(type3Rules.contains(rule)){
+            return; // nothing to do
+        } else if (type3Rules.contains(rule)) {
             // A -> (B)
             NonTerminal B = (NonTerminal) rule.right[1];
-            backtraceDerivation(l-2, s+1, B, result);
-        }
-        else if(type4Rules.contains(rule)){
+            backtraceDerivation(l - 2, s + 1, B, result);
+        } else if (type4Rules.contains(rule)) {
             // A -> B
             NonTerminal B = (NonTerminal) rule.right[0];
             backtraceDerivation(l, s, B, result);
-        }
-        else {
+        } else {
             throw new IllegalStateException("Unknown rule type: " + rule);
         }
     }
@@ -252,6 +242,10 @@ public class SRFParser<T> implements StochasticParser<T> {
         return logProb[n][1][integerNonTerminalMap.get(grammar.getStartSymbol())];
     }
 
+
+    private void fillTableIgnoreProbs(final List<Terminal<T>> word) {
+        fillTable(word);
+    }
 
     @SuppressWarnings("SuspiciousMethodCalls")
     private void fillTable(final List<Terminal<T>> word) {
@@ -329,10 +323,10 @@ public class SRFParser<T> implements StochasticParser<T> {
                 if (l >= 2) {
                     for (Rule rule : type3Rules) {
                         int a = integerNonTerminalMap.get(rule.left);
-                        int b = integerNonTerminalMap.get(rule.right[1]);//only one non-terminal is found on the right of type 3 rules
-                        //if (rule.right[0].equals(word.get(s - 1)) && rule.right[0].equals(word.get(s - 1))) {
-                        // }
-                        if (booleanArray[l - 2][s + 1][b] && rule.right[0].equals(word.get(s - 1)) && rule.right[2].equals(word.get(s + l - 2))) {//checks for opening and closing parenthesis
+                        int b = integerNonTerminalMap.get(rule.right[1]);// only one non-terminal is found on the right of type 3 rules
+                        if (booleanArray[l - 2][s + 1][b]
+                                && rule.right[0].equals(word.get(s - 1)) // checks for opening and closing parenthesis
+                                && rule.right[2].equals(word.get(s + l - 2))) {
                             booleanArray[l][s][a] = true;                                                                                     // the substring between the parenthesis
                             //there's only one partition for type3 rules so p=1
                             int p = 1;
@@ -355,7 +349,6 @@ public class SRFParser<T> implements StochasticParser<T> {
                     int a = integerNonTerminalMap.get(rule.left);
                     int b = integerNonTerminalMap.get(rule.right[0]);//only one non-terminal is found on the right of type 4 rules
                     if (booleanArray[l][s][b]) {//for rules Ai -> Aj checks if j<i
-                        //System.out.println("Entered the innermost loop");                                                               // also checks if Aj produces the given substring
                         booleanArray[l][s][a] = true;
                         //there's only one partition for type3 rules so p=1
                         int p=1;
@@ -426,49 +419,6 @@ public class SRFParser<T> implements StochasticParser<T> {
             }
             System.out.println("\n\n");
         }
-    }
-
-
-    public List<Terminal<T>> derivationToWord(List<Rule> derivation) {
-        // TODO decide whether to use this method or mostLikelyWord
-        // TODO this method is quadratic running time in worst case, should be replaced by recursion
-        List<Category> word = new ArrayList<>();
-        List<Terminal<T>> word_of_terminals = new ArrayList<>();
-        int locator=0;//used to store first known Non-terminal in word, introduced this to improve the running time
-
-        for (Rule rule: derivation){
-            int lhs_index =word.subList(locator,word.size()).indexOf(Category.nonTerminal(rule.left.name));
-            lhs_index+=locator;
-            if(lhs_index>=0 && lhs_index<word.size()){//if non-terminal is found in Category list
-                locator=lhs_index;
-              if(rule.right.length==1){//type 2 and 4
-                  word.set(lhs_index, rule.right[0]);
-
-              }
-              else
-              if(rule.right.length==2){//type 1
-                    word.set(lhs_index,rule.right[0]);
-                    word.add(lhs_index+1,rule.right[1]);
-
-              }
-              else
-              if(rule.right.length==3){//type 3
-                  word.set(lhs_index, rule.right[0]);
-                  word.add(lhs_index+1, rule.right[1]);
-                  word.add(lhs_index+2,rule.right[2]);
-              }
-            }
-            else {
-                for(Category c: rule.right)
-                    word.add(c);
-            }
-        }
-
-
-        for(Category c: word){
-            word_of_terminals.add((Terminal<T>) c);
-        }
-        return word_of_terminals;
     }
 
 

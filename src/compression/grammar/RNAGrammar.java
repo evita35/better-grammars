@@ -17,19 +17,10 @@ import java.util.List;
  */
 public class RNAGrammar extends Grammar<PairOfChar> implements SampleGrammar {
 
-	public RNAGrammar(final String name, final NonTerminal startSymbol, final MyMultimap<NonTerminal, Rule> rules_) {
-		super(name, startSymbol, rules_);
-	}
-
-	public static NonTerminal getLeftMostNT(List<Category> sententialForm) {
-
-		for (Category cat : sententialForm) {
-			//System.out.println("PRINTING RHS in getLeftMostNT " + cat.toString());
-			if (!Category.isTerminal(cat)) {
-				return (NonTerminal) cat;
-			}
-		}
-		return null;
+	private final boolean isWithNonCanonicalRules;
+	public RNAGrammar(final String name, final NonTerminal startSymbol, final MyMultimap<NonTerminal, Rule> rules, boolean isWithNonCanonicalRules) {
+		super(name, startSymbol, rules);
+		this.isWithNonCanonicalRules = isWithNonCanonicalRules;
 	}
 
 	@Override
@@ -67,7 +58,7 @@ public class RNAGrammar extends Grammar<PairOfChar> implements SampleGrammar {
 
 	public RNAGrammar convertToSRF() {
 		MyMultimap<NonTerminal, Rule> rules = SecondaryStructureGrammar.splitLongRightHandSides(this.getAllRules());
-		RNAGrammar G = new RNAGrammar(this.name + "_SRF", this.getStartSymbol(), rules);
+		RNAGrammar G = new RNAGrammar(this.name + "_SRF", this.getStartSymbol(), rules, this.isWithNonCanonicalRules);
 		if (!SRFNormalForm.isSRFNormalForm(G))
 			throw new IllegalStateException("Grammar is not in SRF normal form; probably type 4 rule violations.)");
 		return G;
@@ -80,15 +71,15 @@ public class RNAGrammar extends Grammar<PairOfChar> implements SampleGrammar {
 
 	@Override
 	public boolean isWithNoncanonicalRules() {
-		return false;
+		return isWithNonCanonicalRules;
 	}
 
 	@Override
 	public RNAGrammar getGrammar() {
-		return new RNAGrammar(super.name,super.startSymbol,super.rules);
+		return this;
 	}
 
-	static class Pair {
+	public static class Pair {
 		public Pair(final PairOfChar open, final PairOfChar close) {
 			this.open = open;
 			this.close = close;
@@ -96,10 +87,6 @@ public class RNAGrammar extends Grammar<PairOfChar> implements SampleGrammar {
 
 		public final PairOfChar open, close;
 	}
-	/*
-	public static RNAGrammar from(SecondaryStructureGrammar G, boolean withNonCanonicalRules, NonTerminal ...N){
-
-	}*/
 
 
 	/**
@@ -135,11 +122,11 @@ public class RNAGrammar extends Grammar<PairOfChar> implements SampleGrammar {
 					}
 			}
 		}
-		return new RNAGrammar(G.name, G.getStartSymbol(), rules);
+		return new RNAGrammar(G.name, G.getStartSymbol(), rules, withNonCanonicalRules);
 	}
 
-	/** creates a shallow copy of G as SecondaryStructureGrammar */
-	public static RNAGrammar fromCheap(Grammar<PairOfChar> G) {
-		return new RNAGrammar(G.name, G.startSymbol, G.rules);
+	/** creates a shallow copy of G an RNA grammar */
+	public static RNAGrammar fromCheap(Grammar<PairOfChar> G, boolean withNonCanonicalRules) {
+		return new RNAGrammar(G.name, G.startSymbol, G.rules, withNonCanonicalRules);
 	}
 }

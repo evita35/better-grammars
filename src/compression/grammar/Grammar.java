@@ -16,19 +16,12 @@ import java.util.stream.Collectors;
  * any given {@link Category left category} are not guaranteed to be
  * maintained in the order of insertion.
  *
- * This class pre-computes all the left-relations for the non-terminals that occur
- *
  * Once the Grammar is instantiated, it is immutable.
  */
 public class Grammar<T> {
     @SuppressWarnings("WeakerAccess")
     public final String name;
-    /**
-     * Reflexive, transitive closure of unit production relations, with the probabilities summed
-     */
-
     public final NonTerminal startSymbol;
-
     public final Set<Terminal<T>> terminals = new HashSet<>();
     protected final MyMultimap<NonTerminal, Rule> rules;
 

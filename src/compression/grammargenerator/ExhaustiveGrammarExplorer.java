@@ -4,12 +4,10 @@ import compression.LocalConfig;
 import compression.RuleProbType;
 import compression.data.CachedDataset;
 import compression.data.Dataset;
-import compression.data.DatasetFileIOException;
 import compression.data.FolderBasedDataset;
 import compression.grammar.*;
 import compression.parser.GrammarReaderNWriter;
 import compression.parser.SRFParser;
-import compression.samplegrammars.model.RuleProbModel;
 import compression.util.MyMultimap;
 
 import java.io.BufferedWriter;
@@ -18,240 +16,194 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * @author Sebastian Wild (wild@liverpool.ac.uk)
  */
 public class ExhaustiveGrammarExplorer extends AbstractGrammarExplorer {
 	public static void main(String[] args) throws IOException {
-		// Parameters: #nonterminals, #rules, keepBestK, small-dataset, full-dataset
-		// Keep trying grammars and keep the best k grammars
-		// according to the given dataset
 		if (args.length < 4) {
-			System.out.println("Usage: ExhaustiveGrammarExplorer #nonterminals #rules keepBestgitggK full-dataset [small-dataset] [rule-prob-model]");
-			System.out.println("\t #rules can be p between 0 and 1 in which case each rule will be included at random with prob p");
+			System.out.println("Usage: ExhaustiveGrammarExplorer #nonterminals #rules keepBestK full-dataset [small-dataset] [rule-prob-model]");
+			System.out.println("\t Generate all grammars with #nonterminals and #rules and keep " +
+					"the best K grammars according to their compression performance on full-dataset.");
+			System.out.println("\t #nonterminals: number of nonterminals in the SRF grammar");
+			System.out.println("\t #rules: number of rules in grammar");
+			System.out.println("\t keepBestK: number of best grammars to keep or 'inf' to keep all");
+			System.out.println("\t full-dataset: folder with RNA files");
+			System.out.println("\t small-dataset: folder with RNA files; default: small-dataset");
 			System.out.println("\t rule-prob-model: one of 'static', 'semi-adaptive', 'adaptive'; default: adaptive ");
 			System.exit(1);
 		}
-		int startNoOfNonTerminals = Integer.parseInt(args[0]);
-		int startRulesAt = Integer.parseInt(args[1]);
-		int endNoOfNonTerminals = Integer.parseInt(args[2]);
-		int nBestGrammarsToKeep = Integer.parseInt(args[3]);
-		Dataset fullDataset = new CachedDataset(new FolderBasedDataset(args[4]));
-		Dataset smallDataset = new CachedDataset(new FolderBasedDataset(args.length > 6 ? args[5] : "small-dataset"));
+		int nNonterminals = Integer.parseInt(args[0]);
+		int nRules = Integer.parseInt(args[1]);
+		int nBestToKeep = args[2].equalsIgnoreCase("inf") ?
+				Integer.MAX_VALUE : Integer.parseInt(args[2]);
+		Dataset fullDataset = new CachedDataset(new FolderBasedDataset(args[3]));
+		Dataset smallDataset = new CachedDataset(new FolderBasedDataset(args.length > 5 ? args[4] : "small-dataset"));
 		Dataset parsableDataset = new CachedDataset(new FolderBasedDataset("minimal-parsable"));
-		System.out.println("startNoOfTerminals = " + startNoOfNonTerminals);
-		System.out.println("endNoOfTerminals = " + endNoOfNonTerminals);
-		System.out.println("nBestGrammarsToKeep = " + nBestGrammarsToKeep);
+		System.out.println("noOfTerminals = " + nNonterminals);
+		System.out.println("nBestToKeep = " + nBestToKeep);
 		System.out.println("fullDataset = " + fullDataset);
 		System.out.println("smallDataset = " + smallDataset);
 		System.out.println("parsableDataset = " + parsableDataset);
-		RuleProbType model = args.length > 6 ? RuleProbType.fromString(args[6]) : RuleProbType.ADAPTIVE;
+		RuleProbType model = args.length > 5 ? RuleProbType.fromString(args[5]) : RuleProbType.ADAPTIVE;
 		System.out.println("rule prob model type = " + model);
-
-		// TODO generalize?
 		if (model == RuleProbType.STATIC) {
+			// generalizing this would not be hard, but have to specify a training dataset then ...
 			System.out.println("Only adaptive / semi-adaptive rule probability model is supported at the moment. Sorry.");
 			System.exit(1);
 		}
-		ExhaustiveGrammarExplorer explorer = new ExhaustiveGrammarExplorer(startNoOfNonTerminals);
-		explorer.startExploration(startNoOfNonTerminals,endNoOfNonTerminals, startRulesAt, nBestGrammarsToKeep,fullDataset,smallDataset,parsableDataset,model);
+		String prefix = (nBestToKeep == Integer.MAX_VALUE ? "all-" : "best-" + nBestToKeep + "-")
+				+ nNonterminals + "NTs-" + nRules + "rules-"
+				+ model + "-model-" + fullDataset.getName();
+		File grammarsFolder = new File(LocalConfig.GIT_ROOT + "/grammars", prefix);
+		File logFile = new File(prefix + ".txt");
+		System.out.println("Storing grammars in folder " + grammarsFolder);
+		grammarsFolder.mkdir();
+
+
+		ExhaustiveGrammarExplorer explorer = new ExhaustiveGrammarExplorer(nNonterminals);
+		if (nRules > explorer.allPossibleRules.length) {
+			System.out.println("Cannot generate grammars with " + nRules + " rules; only " + explorer.allPossibleRules.length + " possible rules.");
+			System.exit(1);
+		}
+		explorer.startExploration(nNonterminals, nRules, nBestToKeep,
+				fullDataset, smallDataset, parsableDataset, model, grammarsFolder, logFile);
 
 	}
 
-	public void startExploration(int startNoOfNonTerminals,int endNoOfNonTerminals, int startRulesAt, int nBestGrammarsToKeep, Dataset fullDataset,
-								 Dataset smallDataset,Dataset parsableDataset , RuleProbType model) throws IOException {
-		String folderName= LocalConfig.GIT_ROOT+"/grammars/best-grammars-exhaustive-NTs-Range-" + startNoOfNonTerminals + "NTs-TO-" + endNoOfNonTerminals +"NTs-model-"+model+"-nBestGrammarsToKeep-" + nBestGrammarsToKeep + "-fullDataset-" + fullDataset.getName();
-		String fileName = "best-grammars-exhaustive-NTs-Range" + startNoOfNonTerminals + "-TO-" + endNoOfNonTerminals +"-model-"+model+"-nBestGrammarsToKeep-" + nBestGrammarsToKeep + "-fullDataset-" + fullDataset.getName() + ".txt";
-		System.out.println("Writing best grammars to file " + new File(fileName).getAbsolutePath());
-
+	public void startExploration(int numOfNonterminals, int numOfRules, int nBestGrammarsToKeep, Dataset fullDataset,
+	                             Dataset smallDataset, Dataset parsableDataset, RuleProbType model, final File grammarsFolder, final File logFile) throws IOException {
+		System.out.println("Intermediate results logged to " + logFile.getAbsolutePath());
 
 		SortedSet<GrammarWithScore> bestGrammars = new TreeSet<>();
 		bestGrammars.add(new GrammarWithScore(null, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY));
 
-
-		// Cache minimal-parsable dataset
+		// Cache minimal-parsable dataset for performance
 		List<List<Terminal<Character>>> parsableDatasetWords = new ArrayList<>(parsableDataset.getSize());
 		for (RNAWithStructure rna : parsableDataset) {
 			List<Terminal<Character>> terminals = rna.secondaryStructureAsTerminals();
 			parsableDatasetWords.add(terminals);
 		}
 
-		long nGrammars = -1;
+		long nGrammars = 0;
 		long nPassedLevel1 = 0, nPassedLevel2 = 0, nPassedLevel3 = 0;
 
-		int grammarIndex=0;
-		int noOfNonTerminals=startNoOfNonTerminals;
-
 		long startTime = System.currentTimeMillis();
-		while(noOfNonTerminals<=endNoOfNonTerminals){
+		//while(noOfNonTerminals<=endNoOfNonTerminals){
 
-			Map<Integer,Rule> integerRuleMap= new AutoGeneratedGrammars(noOfNonTerminals).generateRules();
-			int noOfRules=integerRuleMap.size();
-
-			for (int k = startRulesAt; k <= noOfRules; k++) {
-				//file to keep record of generated rules
-				//BufferedWriter bf = new BufferedWriter(new FileWriter(LocalConfig.GIT_ROOT + "/grammars/" + k + "-rules-generated-grammars-log.txt"));
-				int parsable = 0;
-				int notParsable = 0;
-
-				SubsetIterator SSI = new SubsetIterator(noOfRules, k);//get subsets
+		List<Rule> allRules = AutoGeneratedGrammars.generateAllRules(numOfNonterminals);
+		int totalNumberOfRules = allRules.size();
 
 
-				while (SSI.hasNext()) {
-					int[] subArray = SSI.next();
-					grammarIndex++;
-					SecondaryStructureGrammar ssg = getNextGrammar(noOfNonTerminals,k,subArray,grammarIndex,integerRuleMap);
+		SubsetIterator SSI = new SubsetIterator(totalNumberOfRules, numOfRules);//get subsets
 
-					try {
-						// Level 1 check: parses minimal-parsable?
-						SRFParser<Character> ssParser = new SRFParser<>(ssg);
-						for (List<Terminal<Character>> word : parsableDatasetWords) {
-							if (!ssParser.parsable(word))
-								continue; // ignore this grammar
-						}
-						// Passed level 1
-						System.out.println("Grammar passed level 1 (" + (System.currentTimeMillis() - startTime) + " ms)");
-						System.out.println("grammar = " + ssg);
-						++nPassedLevel1;
-						System.out.println("nPassedLevel1 = " + nPassedLevel1);
-
-
-						// Level 2: determine bits per base compression ratio on small dataset
-						double avgBitsPerBaseSmallDataset = getBitsPerBase(smallDataset, model, ssg, false);
-						// if good enough, keep it and go to level 3
-						if (bestGrammars.last().avgBitsPerBaseSmallDataset <= avgBitsPerBaseSmallDataset) {
-							// ignore this grammar
-							continue;
-						}
-						System.out.println("\tGrammar " + (nGrammars) + " passed level 2 (" + (System.currentTimeMillis() - startTime) + " ms)");
-						++nPassedLevel2;
-
-						// Level 3: determine bits per base compression ratio on full dataset
-						double avgBitsPerBaseFullDataset = getBitsPerBase(fullDataset, model, ssg, true);
-						GrammarWithScore e = new GrammarWithScore(ssg, avgBitsPerBaseFullDataset, avgBitsPerBaseSmallDataset);
-						bestGrammars.add(e);
-						System.out.println("\tGrammar " + (nGrammars) + " passed level 3  (" + (System.currentTimeMillis() - startTime) + " ms)");
-						++nPassedLevel3;
-						System.out.println("\tnew entry: " + e);
-						if (bestGrammars.size() > nBestGrammarsToKeep) {
-							bestGrammars.remove(bestGrammars.last());
-						}
-						try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName)))) {
-							out.println("checked grammars = " + nGrammars);
-							out.println("nPassedLevel1 = " + nPassedLevel1);
-							out.println("nPassedLevel2 = " + nPassedLevel2);
-							out.println("nPassedLevel3 = " + nPassedLevel3);
-							AbstractGrammarExplorer.printGrammars(out, bestGrammars);
-						} catch (IOException e1) {
-							e1.printStackTrace();
-						}
-						System.out.println("Best grammars so far:");
-						AbstractGrammarExplorer.printGrammars(new PrintWriter(System.out), bestGrammars);
-					} catch (Exception e) {
-						System.err.println("Didn't except this: " + e);
-						System.err.println("Grammar " + ssg.name + " is invalid.");
-						System.err.println(ssg);
-						e.printStackTrace();
-						System.out.println("Continue with next grammar anyways.");
-					}
+		next_grammar:
+		while (SSI.hasNext()) {
+			nGrammars++;
+			String name = "grammar-" + (numOfNonterminals) + "NTs-" + numOfRules + "rules-" + (nGrammars-1);
+			SecondaryStructureGrammar ssg = null;
+			try {
+				ssg = grammarFor(SSI.next(), name);
+				// Level 1 check: parses minimal-parsable?
+				SRFParser<Character> ssParser = new SRFParser<>(ssg);
+				for (List<Terminal<Character>> word : parsableDatasetWords) {
+					if (!ssParser.parsable(word))
+						continue next_grammar; // ignore this grammar
 				}
+				// Passed level 1
+				System.out.println("Grammar passed level 1 (" + (System.currentTimeMillis() - startTime) + " ms)");
+				System.out.println("grammar = " + ssg);
+				++nPassedLevel1;
+				System.out.println("nPassedLevel1 = " + nPassedLevel1);
+
+
+				// Level 2: determine bits per base compression ratio on small dataset
+				double avgBitsPerBaseSmallDataset = getBitsPerBase(smallDataset, model, ssg, false);
+				// if good enough, keep it and go to level 3
+				if (bestGrammars.last().avgBitsPerBaseSmallDataset <= avgBitsPerBaseSmallDataset) {
+					// ignore this grammar
+					continue;
+				}
+				System.out.println("\tGrammar " + (nGrammars) + " passed level 2 (" + (System.currentTimeMillis() - startTime) + " ms)");
+				++nPassedLevel2;
+
+				// Level 3: determine bits per base compression ratio on full dataset
+				double avgBitsPerBaseFullDataset = getBitsPerBase(fullDataset, model, ssg, true);
+				GrammarWithScore e = new GrammarWithScore(ssg, avgBitsPerBaseFullDataset, avgBitsPerBaseSmallDataset);
+				bestGrammars.add(e);
+				System.out.println("\tGrammar " + (nGrammars) + " passed level 3  (" + (System.currentTimeMillis() - startTime) + " ms)");
+				++nPassedLevel3;
+				System.out.println("\tnew entry: " + e);
+				if (bestGrammars.size() > nBestGrammarsToKeep) {
+					bestGrammars.remove(bestGrammars.last());
+				}
+				try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logFile)))) {
+					out.println("checked grammars = " + nGrammars);
+					out.println("nPassedLevel1 = " + nPassedLevel1);
+					out.println("nPassedLevel2 = " + nPassedLevel2);
+					out.println("nPassedLevel3 = " + nPassedLevel3);
+					printGrammars(out, bestGrammars);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+//				System.out.println("Best grammars so far:");
+//				printGrammars(new PrintWriter(System.out), bestGrammars);
+			} catch (IllegalArgumentException e) {
+				// startnonterminal not in rules -> invalid grammar. Safe to ignore
+			} catch (Exception e) {
+				System.err.println("Didn't expect this: " + e);
+				System.err.println(ssg);
+				e.printStackTrace();
+				System.out.println("Continue with next grammar.");
 			}
-			noOfNonTerminals++;
 		}
 
-		try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName)))) {
+		try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logFile)))) {
+			out.println("checked grammars = " + nGrammars);
+			out.println("nPassedLevel1 = " + nPassedLevel1);
+			out.println("nPassedLevel2 = " + nPassedLevel2);
+			out.println("nPassedLevel3 = " + nPassedLevel3);
 			printGrammars(out, bestGrammars);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		System.out.println("Best grammars so far:");
-		printGrammars(new PrintWriter(System.out), bestGrammars);
 
-		//print grammars to separate files
-		printBestGrammars(bestGrammars,folderName);
-	}
+		System.out.println("checked grammars = " + nGrammars);
+		System.out.println("nPassedLevel1 = " + nPassedLevel1);
+		System.out.println("nPassedLevel2 = " + nPassedLevel2);
+		System.out.println("nPassedLevel3 = " + nPassedLevel3);
 
-	public void printBestGrammars (SortedSet<GrammarWithScore> best, String foldername) throws IOException {
-		File fileFolder = new File(foldername);
-
-		for(GrammarWithScore g: best){
-			if(g.grammar==null){}
-			else
-				{
-					GrammarReaderNWriter writeGrammar = new GrammarReaderNWriter(fileFolder, g.grammar);
-
-					writeGrammar.writeGrammarToFile(g.grammar);
-				}
+		if (nPassedLevel3 > 0) {
+			System.out.println("Best grammars:");
+			printGrammars(new PrintWriter(System.out), bestGrammars);
+			saveBestGrammars(bestGrammars, grammarsFolder);
+		} else {
+			System.out.println("No grammars passed level 3.");
+			System.out.println("Deleting folder " + grammarsFolder.getAbsolutePath());
+			grammarsFolder.delete();
 		}
 	}
+
+	public void saveBestGrammars(SortedSet<GrammarWithScore> best, File grammarsFolder) throws IOException {
+		for (GrammarWithScore g : best) {
+			if (g.grammar == null) continue;
+			new GrammarReaderNWriter(grammarsFolder, g.grammar).writeGrammarToFile(g.grammar);
+		}
+	}
+
 	public ExhaustiveGrammarExplorer(final int nNonterminals) {
 		super(nNonterminals);
 	}
 
-	public Map<Integer,Rule> getListOfRules(int noOfNonterminals){
-		AutoGeneratedGrammars AGG = new AutoGeneratedGrammars(nNonterminals);
-		return AGG.generateRules();
-	}
-
-	SecondaryStructureGrammar getNextGrammar(int noOfNonTerminals, int noOfRules, int[] subsetArray, int grammarIndex, Map<Integer, Rule> integerRuleMap){
-
-		List<Rule> listOfRules = new ArrayList<>();
-
-		for (int i : subsetArray) {
-			listOfRules.add(integerRuleMap.get(i));
-		}
-		List<NonTerminal> listOfLHSNonTerminals = getLHSNonTerminals(listOfRules);
-
-		Collections.sort(listOfLHSNonTerminals, new Comparator<NonTerminal>() {
-			@Override
-			public int compare(NonTerminal o1, NonTerminal o2) {
-				if (o1.name.compareTo(o2.name) > 0) {
-					return 1;
-				} else return -1;
-			}
-		});
-
-		System.out.println("List of non Terminals " + listOfLHSNonTerminals);
-		NonTerminal startTerminal = listOfLHSNonTerminals.get(listOfLHSNonTerminals.size() - 1);
-
-		//for (NonTerminal nonT : listOfLHSNonTerminals) {
-
-
-		Grammar.Builder<Character> GB = new Grammar.Builder<>(
-				"grammar-" + (noOfNonTerminals) + "NTs-" + noOfRules + "rules-" + grammarIndex, startTerminal);
-
-		//grammarIndex++;
-
-		for (int i : subsetArray) {
-			GB.addRule(integerRuleMap.get(i));
-		}
-
-
-		SecondaryStructureGrammar secondaryGrammar = SecondaryStructureGrammar.fromCheap(GB.build());
-		return secondaryGrammar;
-	}
-
-	private List<NonTerminal> getLHSNonTerminals(List<Rule> rules) {
-		List<NonTerminal> nonTerminals = new ArrayList<>();
-		for (Rule rule : rules) {
-			if (!nonTerminals.contains(rule.left))
-				nonTerminals.add(rule.left);
-
-		}
-		return nonTerminals;
-	}
-	public SecondaryStructureGrammar grammarFor(int[] usedRules) {
+	public SecondaryStructureGrammar grammarFor(int[] usedRules, String name) {
 		MyMultimap<NonTerminal, Rule> rules = new MyMultimap<>();
 		for (int usedRule : usedRules) {
 			Rule rule = allPossibleRules[usedRule];
 			rules.put(rule.left, rule);
 		}
-		String name = "RandomGrammar_" + nNonterminals + "_" +
-				(Arrays.stream(usedRules).mapToObj(Integer::toString).collect(Collectors.joining("+")));
-		SecondaryStructureGrammar G = new SecondaryStructureGrammar(name, nonTerminals[nNonterminals - 1], rules);
-		return G;
+		NonTerminal startSymbol = nonTerminals[nNonterminals - 1];
+		return new SecondaryStructureGrammar(name, startSymbol, rules);
 	}
 
 }

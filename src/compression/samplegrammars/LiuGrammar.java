@@ -14,59 +14,29 @@ import compression.grammar.RNAGrammar;
 import compression.grammar.SecondaryStructureGrammar;
 
 /**
- * Grammar from Liu et al 2008 with epsilon rules removed.
+ * Grammar from Liu et al. 2008 with epsilon rules removed.
  */
-public class LiuGrammar implements SampleGrammar {
+public class LiuGrammar extends AbstractBuiltinGrammar {
 
-    private final RNAGrammar G;
-    private final NonTerminal S;
-    public String name="LiuGrammar";
+	public LiuGrammar(boolean withNonCanonicalRules) {
+		super(withNonCanonicalRules, buildSecondaryStructureGrammar());
+	}
 
-    boolean withNonCanonicalRules;
+	public static SecondaryStructureGrammar buildSecondaryStructureGrammar() {
+		NonTerminal S = new NonTerminal("S");
+		NonTerminal L = new NonTerminal("L");
 
-    public LiuGrammar(boolean withNonCanonicalRules) {
-        this.withNonCanonicalRules= withNonCanonicalRules;
-        SecondaryStructureGrammar SSG = buildSecondaryStructureGrammar();
-        G = RNAGrammar.from(SSG, withNonCanonicalRules);
-        this.S = G.startSymbol;
+		CharTerminal o = new CharTerminal('(');
+		CharTerminal c = new CharTerminal(')');
+		CharTerminal u = new CharTerminal('.');
 
-    }
+		Grammar.Builder<Character> Gb = new Grammar.Builder<Character>("LiuGrammar", S)
+				.addRule(S, L, S)
+				.addRule(S, L)
+				.addRule(L, o, S, c)
+				.addRule(L, u);
 
-    public static SecondaryStructureGrammar buildSecondaryStructureGrammar() {
-        NonTerminal S = new NonTerminal("S");
-        NonTerminal L = new NonTerminal("L");
+		return SecondaryStructureGrammar.from(Gb.build());
+	}
 
-        CharTerminal o = new CharTerminal('(');
-        CharTerminal c = new CharTerminal(')');
-        CharTerminal u = new CharTerminal('.');
-
-
-        Grammar.Builder<Character> Gb = new Grammar.Builder<Character>("LiuGrammar",S)
-                .addRule(S, L, S)
-                .addRule(S, L)
-                .addRule(L, o, S, c)
-                .addRule(L, u);
-
-        SecondaryStructureGrammar SSG = SecondaryStructureGrammar.from(Gb.build());
-        return SSG;
-    }
-
-    @Override
-    public boolean isWithNoncanonicalRules() {
-        return withNonCanonicalRules;
-    }
-
-
-    public NonTerminal getStartSymbol() {
-        return S;
-    }
-
-    public RNAGrammar getGrammar() {
-        return G;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
 }

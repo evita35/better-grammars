@@ -62,9 +62,4 @@ public class CSVFile implements Closeable {
 		out.close();
 	}
 
-	public static void main(String[] args) throws IOException {
-		CSVFile csv = new CSVFile(new File("/tmp/test.csv"),"name","age");
-		csv.appendRow("Karl","17");
-		csv.appendRow("\"Trude\"","14");
-	}
 }

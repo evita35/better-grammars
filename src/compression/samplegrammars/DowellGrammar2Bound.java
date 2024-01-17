@@ -6,17 +6,13 @@ import compression.grammar.NonTerminal;
 import compression.grammar.Grammar;
 import compression.grammar.RNAGrammar;
 
-public class DowellGrammar2Bound implements SampleGrammar {
-
-	private final RNAGrammar G;
-
-	boolean withNonCanonicalRules;
+public class DowellGrammar2Bound extends AbstractBuiltinGrammar {
 
 	public DowellGrammar2Bound(boolean withNonCanonicalRules) {
-		this.withNonCanonicalRules = withNonCanonicalRules;
+		super(withNonCanonicalRules, buildGrammar(withNonCanonicalRules));
+	}
 
-		//fileName= LocalConfig.G2File;
-
+	public static RNAGrammar buildGrammar(final boolean withNonCanonicalRules) {
 		NonTerminal S = new NonTerminal("$S");
 		NonTerminal L = new NonTerminal("L");
 		NonTerminal U = new NonTerminal("$$U");
@@ -57,7 +53,7 @@ public class DowellGrammar2Bound implements SampleGrammar {
 		PairOfCharTerminal uu = new PairOfChar('U', '.').asTerminal();
 
 
-		Grammar.Builder<PairOfChar> Gb = new Grammar.Builder<PairOfChar>("DowellGrammar2Bound", S);
+		Grammar.Builder<PairOfChar> Gb = new Grammar.Builder<>("DowellGrammar2Bound", S);
 		// rules as in DCC23 paper
 		Gb
 				.addRule(U, au)
@@ -428,28 +424,7 @@ public class DowellGrammar2Bound implements SampleGrammar {
 		;
 
 
-		G = RNAGrammar.fromCheap(Gb.build()).convertToSRF();
-        /*
-        System.out.println(
-                "G = " + G);*/
-
+		return RNAGrammar.fromCheap(Gb.build(), withNonCanonicalRules).convertToSRF();
 	}
 
-	@Override
-	public boolean isWithNoncanonicalRules() {
-		return withNonCanonicalRules;
-	}
-
-	//public String getFileName(){return fileName;}
-	public NonTerminal getStartSymbol() {
-		return G.getStartSymbol();
-	}
-
-	public RNAGrammar getGrammar() {
-		return G;
-	}
-
-	public String getName() {
-		return G.getName();
-	}
 }

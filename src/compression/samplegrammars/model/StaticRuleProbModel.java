@@ -20,74 +20,68 @@ import java.util.Map;
  */
 public class StaticRuleProbModel implements RuleProbModel {
 
-    /** store right hand side as list, not entire rule to avoid failed
-     * lookups when used with rules of different probabilities   */
-    private final Map<NonTerminal, Map<List<Category>, Interval>> ruleProbs
-            = new HashMap<>();
-    Grammar<PairOfChar> grammar;
-    
-    private NonTerminal nextNonTerminal;
+	/**
+	 * store right hand side as list, not entire rule to avoid failed lookups when used
+	 * with rules of different probabilities
+	 */
+	private final Map<NonTerminal, Map<List<Category>, Interval>> ruleProbs;
+	Grammar<?> grammar;
 
-    /** Requires the rules in G and in probs to match in probability! */
-    public StaticRuleProbModel(Grammar<PairOfChar> G, Map<Rule, Double> probs) {
-        grammar=G;
-        //System.out.println(probs.toString());
-        for (NonTerminal nonTerminal : G.getNonTerminals()) {
-            ruleProbs.put(nonTerminal, new HashMap<>());
-            BigDecimal left = BigDecimal.ZERO; //left stands for lower bound of Interval
-            for (Rule rule : G.getRules(nonTerminal)) {
-                
-                //System.out.println("VALUE OF PROBS IS: "+probs.toString());
-                //System.out.println("VALUE OF RULE IS: "+rule);
-                //System.out.println(rule+" "+ probs.containsKey(rule));
-                
-                double p = probs.get(rule);
-                BigDecimal pBD = BigDecimal.valueOf(p);//
-                ArrayList<Category> rhs = new ArrayList<>(Arrays.asList(rule.getRight()));
-                ruleProbs.get(nonTerminal).put(rhs, new BigDecimalInterval(left, pBD));//maps each rule to its initial sub Interval of [0, 1)
-                left = left.add(pBD);
-            }
-        }
-        
-       // printRuleProbs();
-    }
-    
-    void printRuleProbs(){
-        //System.out.println("PRINTING OUT RULE PROBS");
-        for (NonTerminal nt: ruleProbs.keySet()){
-            //System.out.println(nt);
-            for(List<Category> catlist: ruleProbs.get(nt).keySet())
-                System.out.println(catlist.toString()+" " +ruleProbs.get(nt).get(catlist).toString());
-        }
-    }
-    @Override
-    public List<Interval> getIntervalList(NonTerminal lhs){
-        //System.out.println("VALUE OF NT IS: "+nt);
-        return new ArrayList<Interval> (ruleProbs.get(lhs).values());
-    }
-    
-    public List<Category> getRhsFor(Interval intvl, NonTerminal lhs){
+	/** Requires the rules in grammar and in probs to match in probability! */
+	public StaticRuleProbModel(Grammar<?> grammar, Map<Rule, Double> probs) {
+		this.grammar = grammar;
+		this.ruleProbs = computeRuleIntervalMap(grammar, probs);
+	}
 
+	public static Map<NonTerminal, Map<List<Category>, Interval>> computeRuleIntervalMap(
+			final Grammar<?> grammar, final Map<Rule, Double> probs) {
+		Map<NonTerminal, Map<List<Category>, Interval>> res = new HashMap<>();
+		for (NonTerminal nonTerminal : grammar.getNonTerminals()) {
+			res.put(nonTerminal, new HashMap<>());
+			//maps each rule to its subinterval of [0, 1)
+			BigDecimal left = BigDecimal.ZERO; // left endpoint of interval
+			for (Rule rule : grammar.getRules(nonTerminal)) {
+				Double pp = probs.get(rule);
+				if (!Double.isNaN(pp)) { // don't create entry for rules with NaN prob
+					BigDecimal p = BigDecimal.valueOf(pp);//
+					ArrayList<Category> rhs = new ArrayList<>(Arrays.asList(rule.getRight()));
+					res.get(nonTerminal).put(rhs, new BigDecimalInterval(left, p));
+					left = left.add(p);
+				}
+			}
+		}
+		return res;
+	}
 
-            for (List<Category> rhs : ruleProbs.get(lhs).keySet()) {
+	void printRuleProbs() {
+		//System.out.println("PRINTING OUT RULE PROBS");
+		for (NonTerminal nt : ruleProbs.keySet()) {
+			//System.out.println(nt);
+			for (List<Category> catlist : ruleProbs.get(nt).keySet())
+				System.out.println(catlist.toString() + " " + ruleProbs.get(nt).get(catlist).toString());
+		}
+	}
 
-                if(intvl.equals(ruleProbs.get(lhs).get(rhs))){
+	@Override
+	public List<Interval> getIntervalList(NonTerminal lhs) {
+		return new ArrayList<>(ruleProbs.get(lhs).values());
+	}
 
-                    return rhs;
-                }
-            }
-                     
-        
-        return null;
-    }
-       
-    @Override
-    public Interval getIntervalFor(final Rule rule) {
+	public List<Category> getRhsFor(Interval intvl, NonTerminal lhs) {
+		for (List<Category> rhs : ruleProbs.get(lhs).keySet()) {
+			if (intvl.equals(ruleProbs.get(lhs).get(rhs))) {
+				return rhs;
+			}
+		}
+		return null;
+	}
 
-            //System.out.println(ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight())));
-            return ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight())) ;
-    }
-    
-    
+	@Override
+	public Interval getIntervalFor(final Rule rule) {
+		Interval res = ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight()));
+		if (res == null) throw new IllegalArgumentException("rule not found in ruleProbs: " + rule);
+		return res;
+	}
+
 
 }

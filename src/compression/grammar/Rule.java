@@ -43,7 +43,7 @@ public class Rule {
      *                                  <li>the right side contains a <code>null</code> category.</li>
      *                                  </ol>
      */
-    Rule(final NonTerminal left, final Category... right) {
+    public Rule(final NonTerminal left, final Category... right) {
 
         if (left == null) throw new IllegalArgumentException("empty left category");
         if (right == null || right.length == 0) throw new IllegalArgumentException("no right category");

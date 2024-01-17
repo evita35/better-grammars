@@ -31,6 +31,11 @@ public class SecondaryStructureGrammar extends Grammar<Character> {
 		return new SecondaryStructureGrammar(G.name, G.startSymbol, G.rules);
 	}
 
+	/**
+	 * Attempts to convers this grammar to SRF normal form.
+	 * Currently this only mean splitting rules with long right-hand sides into a sequence of rules.
+	 * Nonterminals must already have the right ordering for type 4 rules.
+	 */
 	public SecondaryStructureGrammar convertToSRF() {
 		MyMultimap<NonTerminal, Rule> rules = splitLongRightHandSides(this.getAllRules());
 		SecondaryStructureGrammar G = new SecondaryStructureGrammar(this.name + "_SRF", this.getStartSymbol(), rules);

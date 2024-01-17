@@ -1,96 +1,53 @@
 package compression.samplegrammars.model;
 
-import compression.coding.BigDecimalInterval;
 import compression.coding.Interval;
-import compression.grammar.RNAGrammar;
-import compression.samplegrammars.RuleProbsForGrammarSemiAdaptive;
-import compression.grammar.PairOfChar;
-import compression.grammar.RNAWithStructure;
 import compression.grammar.Category;
 import compression.grammar.NonTerminal;
-import compression.grammar.Grammar;
+import compression.grammar.RNAGrammar;
+import compression.grammar.RNAWithStructure;
 import compression.grammar.Rule;
+import compression.samplegrammars.RuleProbsForGrammarSemiAdaptive;
 
-import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
- * A rule probability model that uses counts to estimate the probability of a
- * rule from a given RNA sequence.
+ * A rule probability model that uses counts to estimate the probability of a rule from a
+ * given RNA sequence.
  */
-public class SemiAdaptiveRuleProbModel implements RuleProbModel{
-    /** store right hand side as list, not entire rule to avoid failed
-     * lookups when used with rules of different probabilities   */
-    private final Map<NonTerminal, Map<List<Category>, Interval>> ruleProbs
-            = new HashMap<>();
-    RNAGrammar grammar;
-    Map<Rule, Double> probs;
-    private NonTerminal nextNonTerminal;
+public class SemiAdaptiveRuleProbModel implements RuleProbModel {
+	/**
+	 * store right hand side as list of categories
+	 */
+	private final Map<NonTerminal, Map<List<Category>, Interval>> ruleProbs;
 
-    /** Requires the rules in G and in probs to match in probability! */
-    public SemiAdaptiveRuleProbModel(RNAGrammar G, NonTerminal startSymbol, RNAWithStructure rna) {
-        grammar=G;
-        //obtains probability for each rule given the particular RNA
-        RuleProbsForGrammarSemiAdaptive PFSAR = new RuleProbsForGrammarSemiAdaptive(G, startSymbol, rna);
-        probs = PFSAR.getRulesToProbs();
-        //System.out.println(probs.toString());
-        for (NonTerminal nonTerminal : G.getNonTerminals()) {
-            ruleProbs.put(nonTerminal, new HashMap<>());
-            BigDecimal left = BigDecimal.ZERO; //left stands for lower bound of Interval
-            for (Rule rule : G.getRules(nonTerminal)) {
+	/** Requires the rules in G and in probs to match in probability! */
+	public SemiAdaptiveRuleProbModel(RNAGrammar G, RNAWithStructure rna) {
+		// obtains probability for each rule given the particular RNA
+		Map<Rule, Double> probs = new RuleProbsForGrammarSemiAdaptive(G, rna).ruleProbs();
+		this.ruleProbs = StaticRuleProbModel.computeRuleIntervalMap(G, probs);
+	}
 
-                //System.out.println("VALUE OF PROBS IS: "+probs.toString());
-                //System.out.println("VALUE OF RULE IS: "+rule);
-                //System.out.println(rule+" "+ probs.containsKey(rule));
+	@Override
+	public List<Interval> getIntervalList(NonTerminal lhs) {
+		return new ArrayList<>(ruleProbs.get(lhs).values());
+	}
 
-                double p = probs.get(rule);
-                BigDecimal pBD = BigDecimal.valueOf(p);//
-                ArrayList<Category> rhs = new ArrayList<>(Arrays.asList(rule.getRight()));
-                ruleProbs.get(nonTerminal).put(rhs, new BigDecimalInterval(left, pBD));//maps each rule to its initial sub Interval of [0, 1)
-                left = left.add(pBD);
-            }
-        }
+	public List<Category> getRhsFor(Interval intvl, NonTerminal lhs) {
+		for (List<Category> rhs : ruleProbs.get(lhs).keySet()) {
+			if (intvl.equals(ruleProbs.get(lhs).get(rhs))) {
+				return rhs;
+			}
+		}
+		return null;
+	}
 
-        // printRuleProbs();
-    }
-
-    void printRuleProbs(){
-        //System.out.println("PRINTING OUT RULE PROBS");
-        for (NonTerminal nt: ruleProbs.keySet()){
-            //System.out.println(nt);
-            for(List<Category> catlist: ruleProbs.get(nt).keySet())
-                System.out.println(catlist.toString()+" " +ruleProbs.get(nt).get(catlist).toString());
-        }
-    }
-    @Override
-    public List<Interval> getIntervalList(NonTerminal lhs){
-        //System.out.println("VALUE OF NT IS: "+nt);
-        return new ArrayList<Interval> (ruleProbs.get(lhs).values());
-    }
-
-    public List<Category> getRhsFor(Interval intvl, NonTerminal lhs){
-
-
-        for (List<Category> rhs : ruleProbs.get(lhs).keySet()) {
-
-            if(intvl.equals(ruleProbs.get(lhs).get(rhs))){
-
-                return rhs;
-            }
-        }
-
-
-        return null;
-    }
-
-    @Override
-    public Interval getIntervalFor(final Rule rule) {
-
-
-            //System.out.println(ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight())));
-            return ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight())) ;
-    }
-
+	@Override
+	public Interval getIntervalFor(final Rule rule) {
+		return ruleProbs.get(rule.getLeft()).get(Arrays.asList(rule.getRight()));
+	}
 
 
 }

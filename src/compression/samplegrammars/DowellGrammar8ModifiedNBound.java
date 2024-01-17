@@ -6,15 +6,14 @@ import compression.grammar.NonTerminal;
 import compression.grammar.Grammar;
 import compression.grammar.RNAGrammar;
 
-public class DowellGrammar8ModifiedNBound implements SampleGrammar {
-
-	private final RNAGrammar G;
-	boolean withNonCanonicalRules;
+public class DowellGrammar8ModifiedNBound extends AbstractBuiltinGrammar {
 
 	public DowellGrammar8ModifiedNBound(boolean withNonCanonicalRules) {
+		super(withNonCanonicalRules, buildGrammar(withNonCanonicalRules));
+	}
 
-		this.withNonCanonicalRules = withNonCanonicalRules;
-		//fileName= LocalConfig.G8File;
+	public static RNAGrammar buildGrammar(final boolean withNonCanonicalRules) {
+		final RNAGrammar G;
 		NonTerminal S = new NonTerminal("S");
 
 		NonTerminal U = new NonTerminal("$U");
@@ -93,8 +92,7 @@ public class DowellGrammar8ModifiedNBound implements SampleGrammar {
 				.addRule(B, go, Vgc, cc)
 				.addRule(B, co, Vcg, gc)
 				.addRule(B, uo, Vug, gc)
-				.addRule(B, go, Vgu, uc)
-		;
+				.addRule(B, go, Vgu, uc);
 		if (withNonCanonicalRules) {
 			Gb
 					.addRule(B, ao, Vaa, ac)
@@ -468,25 +466,8 @@ public class DowellGrammar8ModifiedNBound implements SampleGrammar {
 				.addRule(S, E)
 				.addRule(S, U, S)
 		;
-		G = RNAGrammar.fromCheap(Gb.build()).convertToSRF();
-	}
-
-	@Override
-	public boolean isWithNoncanonicalRules() {
-		return withNonCanonicalRules;
-	}
-
-	//public String getFileName(){return fileName;}
-	public NonTerminal getStartSymbol() {
-		return G.getStartSymbol();
-	}
-
-	public RNAGrammar getGrammar() {
+		G = RNAGrammar.fromCheap(Gb.build(), withNonCanonicalRules).convertToSRF();
 		return G;
 	}
 
-
-	public String getName() {
-		return G.getName();
-	}
 }

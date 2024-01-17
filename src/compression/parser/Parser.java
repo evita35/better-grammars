@@ -1,5 +1,6 @@
 package compression.parser;
 
+import compression.grammar.Grammar;
 import compression.grammar.Rule;
 import compression.grammar.Terminal;
 import compression.grammargenerator.UnparsableException;
@@ -24,5 +25,10 @@ public interface Parser<T> {
 			return false;
 		}
 	}
+
+	/**
+	 * Returns the grammar used by this parser.
+	 */
+	Grammar<T> getGrammar();
 
 }

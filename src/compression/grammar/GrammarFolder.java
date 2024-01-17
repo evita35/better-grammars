@@ -3,15 +3,13 @@ package compression.grammar;
 import compression.LocalConfig;
 import compression.data.DatasetFileIOException;
 import compression.parser.GrammarReaderNWriter;
-import compression.util.Folder;
-import compression.util.GrammarIterator;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class GrammarFolder implements GrammarIterator {
+public class GrammarFolder implements Iterable<SecondaryStructureGrammar> {
     public final String folderName;
     private final File grammarFolder;
 

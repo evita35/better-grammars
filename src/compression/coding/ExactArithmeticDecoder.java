@@ -22,7 +22,6 @@ public class ExactArithmeticDecoder implements ArithmeticDecoder {
 
     public ExactArithmeticDecoder(String encodedBits) {
         encodedDecimal = BigDecimals.binaryToDecimal(encodedBits);
-        System.out.println("VALUE OF DECODED DECIMAL IS: "+encodedDecimal);
         // Increase the scale to leave some slack for rounding.
         encodedDecimal = encodedDecimal.setScale(encodedBits.length()+3, RoundingMode.UNNECESSARY);
     }
@@ -32,13 +31,11 @@ public class ExactArithmeticDecoder implements ArithmeticDecoder {
         // we need to make sure we don't round it downwards, otherwise we might
         // end up with the smaller interval.
         encodedDecimal = encodedDecimal.subtract(interval.getLowerBound()).divide(interval.getLength(), RoundingMode.CEILING);
-        System.out.println("VALUE OF DECODED DECIMAL IS: "+encodedDecimal);
     }
 
     @Override
     public Interval decodeNext(List<Interval> options) {
         Interval interval = Interval.getIntervalContaining(encodedDecimal, options);
-        System.out.println("INTERVAL IS: "+interval);
         updateDecoded(interval);
         return interval;
     }

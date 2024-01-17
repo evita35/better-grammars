@@ -14,32 +14,17 @@ public class TrainingDataset extends FolderBasedDataset {
 		super(name);
 	}
 
-
-	public File getRuleProbsForGrammar(SampleGrammar grammar) {
+	public File ruleProbsFileFor(SampleGrammar grammar) {
 		return new File(LocalConfig.GIT_ROOT
-				+ "/src/compression/static_probabilities/"
+				+ "/staticmodels/static_probabilities/"
 				+ "rule-probs-" + name + "-" + grammar.getName()
 				+ "-withNCR-" + grammar.isWithNoncanonicalRules() + ".txt");
 	}
-
-	public File getRuleCountsForGrammar(SampleGrammar grammar) {
-		return new File(LocalConfig.GIT_ROOT
-				+ "/src/compression/static_probabilities/"
-				+ "rule-counts-" + name + "-" + grammar.getName()
-				+ "-withNCR-" + grammar.isWithNoncanonicalRules() + ".txt");
-	}
-
-	public File getRuleProbsForAutoGenGrammar(SampleGrammar autoGengrammar) {
-		return new File(LocalConfig.GIT_ROOT
-				+ "/staticmodels/static_probabilities/"
-				+ "rule-probs-" + name + "-" + autoGengrammar.getName()
-				+ "-withNCR-" + autoGengrammar.isWithNoncanonicalRules() + ".txt");
-	}
-	public File getRuleCountForAutoGenGrammar(SampleGrammar autoGenGrammar){
+	public File ruleCountsFileFor(SampleGrammar grammar){
 		return new File(LocalConfig.GIT_ROOT
 				+ "/staticmodels/static_counts/"
-				+ "rule-counts-" + name + "-" + autoGenGrammar.getName()
-				+ "-withNCR-" + autoGenGrammar.isWithNoncanonicalRules() + ".txt");
+				+ "rule-counts-" + name + "-" + grammar.getName()
+				+ "-withNCR-" + grammar.isWithNoncanonicalRules() + ".txt");
 	}
 	@Override
 	public String toString() {

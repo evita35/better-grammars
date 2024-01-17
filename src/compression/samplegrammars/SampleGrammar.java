@@ -2,7 +2,7 @@ package compression.samplegrammars;
 
 import compression.data.Dataset;
 import compression.grammar.*;
-import compression.util.MyMultimap;
+import compression.samplegrammars.model.RuleProbModel;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -11,7 +11,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -36,35 +36,20 @@ public interface SampleGrammar {
 
 
 
-    default public Map<Rule, Long> computeRuleCounts(Dataset dataset) throws IOException {
-        RuleCountsForGrammarLaPlace PNG =
-                new RuleCountsForGrammarLaPlace(this.getGrammar(), dataset);
-        return PNG.getRuleToCounts();
+    default Map<Rule, Long> computeRuleCounts(Dataset dataset) throws IOException {
+	    return new RuleCountsForGrammarLaPlace(this.getGrammar(), dataset).ruleCounts();
 
     }
 
     default Map<Rule,Double> computeRulesToProbs(Map<Rule,Long> ruleCounts) {
-        Map<Rule, Double> RulesToProbs = new HashMap<>();
-        List<NonTerminal> nonterminals = ruleCounts.keySet().stream().map(rule -> rule.getLeft()).collect(Collectors.toList());
+        Map<Rule, Double> rulesToProbs = RuleProbModel.computeRuleProbs(this.getGrammar(), ruleCounts);
 
-        Map<NonTerminal, Long> NonTerminalFreq= new HashMap<>();
-        for(NonTerminal NT: nonterminals)
-            NonTerminalFreq.put(NT, 0l);
-
-        for (Rule rule : ruleCounts.keySet()) {
-            NonTerminalFreq.replace(rule.left, ruleCounts.get(rule) + NonTerminalFreq.get(rule.left));
-        }
-
-        for (Rule rule : ruleCounts.keySet()) {
-            RulesToProbs.put(rule, (double) ruleCounts.get(rule) / NonTerminalFreq.get(rule.left));
-        }
-
-        if (!SampleGrammar.checkRulesToProbs(RulesToProbs, nonterminals)) {
+        List<NonTerminal> nonterminals = ruleCounts.keySet().stream().map(Rule::getLeft).collect(Collectors.toList());
+        if (!SampleGrammar.checkRulesToProbs(rulesToProbs, nonterminals)) {
             throw new IllegalArgumentException("Probabilities do not sum up to 1");
         }
 
-
-        return RulesToProbs;
+        return rulesToProbs;
     }
 
     public static boolean checkRulesToProbs(Map<Rule, Double> r2P) {
@@ -92,7 +77,8 @@ public interface SampleGrammar {
         return true;
     }
 
-    private static Map.Entry<Rule, Double> addToAssignProbs(String line){
+    private static Map.Entry<Rule, Double> parseRuleProbLine(String line) {
+        // TODO get rid of nonterminals in CategoryMaps
         CategoryMaps CM = new CategoryMaps();
         NonTerminal nt = CM.stringNonTerminalMap.get(line.substring(0, line.indexOf('\u2192') - 1));
         // obtain the index position after the right arrow character
@@ -144,59 +130,6 @@ public interface SampleGrammar {
     }
 
 
-    private static Map.Entry<Rule, Double> addToAssignProbsForAutoGen(String line){
-        CategoryMaps CM = new CategoryMaps();
-        NonTerminal nt = CM.stringNonTerminalMap.get(line.substring(0, line.indexOf('\u2192') - 1));
-        // obtain the index position after the right arrow character
-        int i = line.indexOf('\u2192') + 1;
-        ArrayList<Category> rhs= new ArrayList<>();
-
-        double probForRule = 0.0;
-        double probForAssign = 0.0;
-
-
-        while(i<line.length()){
-            if(line.charAt(i)=='(')//to read terminal symbols e.g. <A\(>
-            {
-                probForRule=Double.parseDouble( line.substring(i+1, line.lastIndexOf(')')));
-                i=line.lastIndexOf(')');
-            }
-            else if(line.charAt(i)=='<')
-            {
-                rhs.add(CM.stringCategoryMap.get(line.substring(i,i+5)));
-
-                i+=5;
-            }
-            else if(line.charAt(i)==':'){
-                probForAssign=Double.parseDouble(line.substring(i+1));
-                i=line.length();
-                break;
-            }
-            else if(line.charAt(i)==' ' || line.charAt(i)==')'){
-                i++;
-            }
-            else
-            {
-                int r=0;
-
-
-                while(line.charAt(i+r)!=' '){
-                    r++;
-                    if(i+r>=line.length())
-                        break;
-                }//used to obtain the length of the non-terminal symbol
-                rhs.add(CM.stringNonTerminalMap.get(line.substring(i,i+r)));//
-                i=i+r+1;
-
-            }
-        }
-        Category[] catArray = rhs.toArray(new Category[0]);
-        return Map.entry (Rule.create(nt, catArray), probForAssign);
-
-    }
-
-
-
     default public void writeRuleCounts(File file, Map<Rule, Long> ruleCounts ) throws IOException {
         try (BufferedWriter bf = new BufferedWriter(new FileWriter(file))) {
             TreeSet<Map.Entry<Rule, Long>> entries = new TreeSet<>(
@@ -206,9 +139,7 @@ public interface SampleGrammar {
                 bf.write(entry.getKey() + ":" + entry.getValue());
                 bf.newLine();
             }
-            //bf.flush();
-            bf.close();
-            System.out.println("Successfully wrote to the file.");
+            bf.flush();
         }
     }
 
@@ -222,7 +153,6 @@ public interface SampleGrammar {
                 bf.newLine();
             }
             bf.flush();
-            System.out.println("Successfully wrote to the file.");
         }
     }
 
@@ -240,67 +170,50 @@ public interface SampleGrammar {
                             new InputStreamReader(new FileInputStream(file), "UTF-8"));){
             String line;
             while ((line = in.readLine()) != null) {
-               System.out.println("VALUE OF LINE IS: "+line);
-                Map.Entry<Rule, Long> entry = addToRuleCounts(line);
+                Map.Entry<Rule, Long> entry = parseRuleCountLine(line);
                 ruleCounts.put(entry.getKey(), entry.getValue());
             }
             return ruleCounts;
         }
     }
 
-    default public Map.Entry<Rule, Long> addToRuleCounts(String line){
+    private static Map.Entry<Rule, Long> parseRuleCountLine(String line) {
         CategoryMaps CM = new CategoryMaps();
-        NonTerminal nt= CM.stringNonTerminalMap.get(line.substring(0,line.indexOf('\u2192')-1));
-        //System.out.println(nt);
-        int i=line.indexOf('\u2192')+1;//obtains the index position after the right arrow character
-        ArrayList<Category> rhs= new ArrayList<>();
+        NonTerminal nt = CM.stringNonTerminalMap.get(line.substring(0, line.indexOf('\u2192') - 1));
+        int i = line.indexOf('\u2192') + 1;//obtains the index position after the right arrow character
+        ArrayList<Category> rhs = new ArrayList<>();
 
         long frequencyForCounts = 0L;
 
-        while(i<line.length()){
-            if(line.charAt(i)=='(')//to read terminal symbols e.g. <A\(>
+        while (i < line.length()) {
+            if (line.charAt(i) == '(')//to read terminal symbols e.g. <A\(>
             {
                 // old probForRule deleted
-                System.out.println("Skipped double value in parenthesis");
-                i=line.lastIndexOf(')');
-            }
-            else if(line.charAt(i)=='<')
-            {
-                rhs.add(CM.stringCategoryMap.get(line.substring(i,i+5)));
+                i = line.lastIndexOf(')');
+            } else if (line.charAt(i) == '<') {
+                rhs.add(CM.stringCategoryMap.get(line.substring(i, i + 5)));
 //                System.out.println("category map value is "+CM.stringCategoryMap.get(line.substring(i,i+5)));
-                i+=5;
-            }
-            else if(line.charAt(i)==':'){
-                frequencyForCounts=Long.parseLong(line.substring(i+1));
-                i=line.length();
+                i += 5;
+            } else if (line.charAt(i) == ':') {
+                frequencyForCounts = Long.parseLong(line.substring(i + 1));
+                i = line.length();
                 break;
-            }
-            else if(line.charAt(i)==' ' || line.charAt(i)==')'){
+            } else if (line.charAt(i) == ' ' || line.charAt(i) == ')') {
                 i++;
-            }
-            else
-            {
-                int r=0;
-//                System.out.println("value of i+r="+(i+r));
-//                System.out.println("line.length()="+line.length());
-
-                    while (line.charAt(i + r) != ' ') {
+            } else {
+                int r = 0;
+                while (line.charAt(i + r) != ' ') {
 //                        System.out.println(line.charAt(i + r));
-                        r++;
-                        if(i+r>=line.length()||line.charAt(i + r)==':')
-                            break;
-                    }//used to obtain the length of the non-terminal symbol
-
-//                System.out.println("PRINTING OUT SUBSTRING "+line.substring(i,i+r));
-                rhs.add(CM.stringNonTerminalMap.get(line.substring(i,i+r)));//
-                //System.out.println(CM.stringNonTerminalMap.get(line.substring(i,i+r)));
-                i=i+r;
-
+                    r++;
+                    if (i + r >= line.length() || line.charAt(i + r) == ':')
+                        break;
+                }//used to obtain the length of the non-terminal symbol
+                rhs.add(CM.stringNonTerminalMap.get(line.substring(i, i + r)));//
+                i = i + r;
             }
         }
         Category[] catArray = rhs.toArray(new Category[0]);
-//        System.out.println(rhs);
-        return Map.entry (Rule.create( nt, catArray), frequencyForCounts);
+        return Map.entry(Rule.create(nt, catArray), frequencyForCounts);
 
     }
 
@@ -312,22 +225,17 @@ public interface SampleGrammar {
      * @return a map from rules to their probabilities
      * @throws IOException
      */
-    default public Map<Rule,Double> readRuleProbs(File file) throws IOException {
+    default public Map<Rule, Double> readRuleProbs(File file) throws IOException {
         Map<Rule, Double> ruleProbs = new HashMap<>();
-//        System.out.println("Dowell probabilities file name is: "+ file);
-//        PrintWriter printWriter = new PrintWriter(System.out,true);
-//        char aa = '\u2192';
-//        printWriter.println("aa = " + aa);
         BufferedReader in = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), "UTF-8"));
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
 
         String line;
         while ((line = in.readLine()) != null) {
-            Map.Entry<Rule, Double> entry = addToAssignProbs(line);
+            Map.Entry<Rule, Double> entry = parseRuleProbLine(line);
             ruleProbs.put(entry.getKey(), entry.getValue());
         }
         in.close();
-        //System.out.println("printing assign probs"+ruleProbs);
         if (!checkRulesToProbs(ruleProbs)) {
             throw new IllegalArgumentException("Probabilities are not correctly distributed");
         }

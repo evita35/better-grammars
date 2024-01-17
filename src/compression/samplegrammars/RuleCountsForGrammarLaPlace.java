@@ -5,84 +5,55 @@
  */
 package compression.samplegrammars;
 
-import compression.LocalConfig;
 import compression.data.Dataset;
 import compression.grammar.RNAGrammar;
-import compression.grammar.RNAWithStructure;
-import compression.grammar.Grammar;
 import compression.grammar.Rule;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.Buffer;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
 /**
- * Compute the frequency of each rule in a grammar for a given dataset,
- * starting with 1 (LaPlace smoothing)
+ * Compute the frequency of each rule in a grammar for a given dataset, starting with 1
+ * (LaPlace smoothing).
+ * For ambiguous grammars, no guarantee is made as to which derivation is counted.
  */
 public final class RuleCountsForGrammarLaPlace {
 
+	private final Map<Rule, Long> rulesToFrequency = new HashMap<>();
+	private final RNAGrammar grammar;
 
-    Map<Rule, Long> RulesToFrequency;
-    RNAGrammar grammar;
+	public RuleCountsForGrammarLaPlace(RNAGrammar grammar, Dataset dataset) {
+		this.grammar = grammar;
+		initializeMap(this.grammar.getAllRules());
+		StreamSupport.stream(dataset.spliterator(), true).unordered().forEach((RNAWS) -> {
+			try {
+				List<Rule> rules = LeftmostDerivation.rules(this.grammar, RNAWS);
+				incrementMap(rules);
+			} catch (RuntimeException e) {
+				throw new RuntimeException(RNAWS.name + " HAS PARSING ISSUE with grammar: " + this.grammar, e);
+			}
+		});
+	}
 
-    int noOfRNASamples;
+	public synchronized void incrementMap(List<Rule> listOfRules) {
+		listOfRules.forEach((rule) -> {
+			rulesToFrequency.replace(rule, rulesToFrequency.get(rule) + 1);
+		});
+	}
 
-    public RuleCountsForGrammarLaPlace(RNAGrammar g, Dataset dataset) throws IOException {
-
-        RulesToFrequency = new HashMap<>();
-        noOfRNASamples = dataset.getSize();
-
-        grammar = g;
-
-        this.initialiseRTF(new ArrayList<>(grammar.getAllRules()));
-
-        StreamSupport.stream(dataset.spliterator(), true).unordered().forEach((RNAWS) -> {
-            try {
-                List<Rule> rules = new LeftmostDerivation(g).rules(RNAWS);
-                incrementMap(rules);
-            } catch (RuntimeException runtimeException) {
-                //System.out.println(RNAWS.name + " HAS PARSING ISSUE with grammar: "+grammar.name);
-                throw new RuntimeException(RNAWS.name + " HAS PARSING ISSUE with grammar: "+grammar.name);
-                //System.exit(0);
-                /*
-                    try {
-                        BufferedWriter bf = new BufferedWriter(new FileWriter(LocalConfig.GIT_ROOT+"/grammars/"+"grammars-with-parsing-issues"+g.name+".txt"));
-
-                        bf.write("parsing issue with grammar"+grammar.name+"and Rna:"+RNAWS);
-                        bf.newLine();
-                        bf.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                */
-
-            }
-        });
-    }
-
-    public synchronized void incrementMap(List<Rule> listOfRules) {
-        listOfRules.forEach((rule) -> {
-            RulesToFrequency.replace(rule, RulesToFrequency.get(rule) + 1);
-        });
-
-    }
-
-    public void initialiseRTF(List<Rule> rules) {
-        // initialise to 1 to avoid 0 probabilities
-        rules.forEach((rule) -> RulesToFrequency.put(rule, 1L));
-    }
+	public void initializeMap(Collection<Rule> rules) {
+		// initialise to 1 to avoid 0 probabilities
+		rules.forEach((rule) -> rulesToFrequency.put(rule, 1L));
+	}
 
 
-    public Map<Rule, Long> getRuleToCounts() {
-        return RulesToFrequency;
-    }
+	public Map<Rule, Long> ruleCounts() {
+		return Collections.unmodifiableMap(rulesToFrequency);
+	}
 
 
 }

@@ -12,15 +12,13 @@ import compression.grammar.RNAGrammar;
  * <p>
  * we eliminate the epsilon rule we include lone pairs by adding P -> N
  */
-public class DowellGrammar7ModifiedNBound implements SampleGrammar {
-
-	private final RNAGrammar G;
-	boolean withNonCanonicalRules;
+public class DowellGrammar7ModifiedNBound extends AbstractBuiltinGrammar {
 
 	public DowellGrammar7ModifiedNBound(boolean withNonCanonicalRules) {
+		super(withNonCanonicalRules, buildGrammar(withNonCanonicalRules));
+	}
 
-		this.withNonCanonicalRules = withNonCanonicalRules;
-
+	public static RNAGrammar buildGrammar(final boolean withNonCanonicalRules) {
 		NonTerminal S = new NonTerminal("S");
 
 		NonTerminal T = new NonTerminal("T");
@@ -466,24 +464,7 @@ public class DowellGrammar7ModifiedNBound implements SampleGrammar {
 				.addRule(S, L, S)
 		;
 
-		G = RNAGrammar.fromCheap(Gb.build()).convertToSRF();
+		return RNAGrammar.fromCheap(Gb.build(), withNonCanonicalRules).convertToSRF();
 	}
 
-	@Override
-	public boolean isWithNoncanonicalRules() {
-		return withNonCanonicalRules;
-	}
-
-	//public String getFileName(){return fileName;}
-	public NonTerminal getStartSymbol() {
-		return G.getStartSymbol();
-	}
-
-	public RNAGrammar getGrammar() {
-		return G;
-	}
-
-	public String getName() {
-		return G.getName();
-	}
 }
