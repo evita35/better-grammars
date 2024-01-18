@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="datasets">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/datasets/friemel.zip!/" />
+      <root url="jar://$PROJECT_DIR$/datasets/dowell.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

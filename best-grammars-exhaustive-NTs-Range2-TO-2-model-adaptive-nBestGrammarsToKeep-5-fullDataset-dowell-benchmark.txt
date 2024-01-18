@@ -1,0 +1,20 @@
+1	grammar-2NTs-15rules-1
+	GrammarWithScore(grammar=grammar-2NTs-15rules-1: {
+  A0 → ( A0 ),
+  A0 → ( A1 ),
+  A0 → .,
+  A0 → A0 A0,
+  A0 → A0 A1,
+  A0 → A1 A0,
+  A0 → A1 A1,
+  A1 → ( A0 ),
+  A1 → ( A1 ),
+  A1 → .,
+  A1 → A0,
+  A1 → A0 A0,
+  A1 → A0 A1,
+  A1 → A1 A0,
+  A1 → A1 A1
+  start symbol: A1
+}, avgBitsPerBase=3.7315249197704636, avgBitsPerBaseSmallDataset=4.574980456962869)
+

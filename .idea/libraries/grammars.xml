@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="grammars">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/grammars/2NT_GRAMMARS &amp; 3NT_GRAMMARS_UP_TO_6_RULES.zip!/" />
+      <root url="jar://$PROJECT_DIR$/grammars/exhaustive-2NT-parsable.zip!/" />
+      <root url="jar://$PROJECT_DIR$/grammars/failed_grammars_first_filter.zip!/" />
+      <root url="jar://$PROJECT_DIR$/grammars/exhaustive-2NT-parsable-best-1000-adaptive-on-Benchmark_Random_10percent.zip!/" />
+      <root url="jar://$PROJECT_DIR$/grammars/2NT_Grammars &amp; 3NT_GRAMMARS_UP_TO_6_RULES_FILTERED.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
