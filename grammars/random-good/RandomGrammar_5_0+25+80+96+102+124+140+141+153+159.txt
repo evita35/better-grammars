@@ -1,0 +1,29 @@
+GrammarName
+RandomGrammar_5_0+25+80+96+102+124+140+141+153+159
+
+Start Symbol
+A4
+
+Non-Terminals
+A1
+A2
+A3
+A4
+A0
+
+Terminals
+(
+)
+.
+
+Rules
+A3 -> A0 A3 
+A2 -> A2 A1 
+A4 -> ( A4 ) 
+A0 -> ( A4 ) 
+A3 -> . 
+A4 -> A1 A0 
+A4 -> A1 A1 
+A4 -> A3 
+A0 -> . 
+A3 -> ( A4 ) 

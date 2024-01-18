@@ -1,2 +1,1 @@
-'gramamrs_first_filter': These are a subset of the automatically generated grammars, which succesfully parsed the sample RNAs
-'failed_grammars_first_filter':  These are a subset of the automatically generated grammars, which failed to parse the sample RNAs
+* `random-good`: Collection of well-performing grammars found during exhaustive and random search.
