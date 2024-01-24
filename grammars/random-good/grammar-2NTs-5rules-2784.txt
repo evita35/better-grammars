@@ -1,5 +1,5 @@
 GrammarName
-grammar-2NTs-5rules-2784
+G_star_2_5
 
 Start Symbol
 A1
@@ -14,8 +14,8 @@ Terminals
 .
 
 Rules
-A1 -> A1 A1 
-A1 -> A0 A1 
-A1 -> ( A1 ) 
 A0 -> . 
 A1 -> . 
+A1 -> ( A1 ) 
+A1 -> A1 A1 
+A1 -> A0 A1 

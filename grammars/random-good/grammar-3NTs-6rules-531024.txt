@@ -15,9 +15,9 @@ Terminals
 .
 
 Rules
-A1 -> A0 A1 
-A0 -> ( A2 ) 
-A2 -> ( A2 ) 
-A1 -> A0 
-A2 -> A1 
 A0 -> . 
+A0 -> ( A2 ) 
+A1 -> A0 
+A1 -> A0 A1 
+A2 -> ( A2 ) 
+A2 -> A1 

@@ -1,16 +1,14 @@
 GrammarName
-G_dag_6_10
+G_dag_6_10_prime
 
 Start Symbol
 A5
 
 Non-Terminals
+A0
 A1
-A2
-A3
 A4
 A5
-A0
 
 Terminals
 (
@@ -21,10 +19,7 @@ Rules
 A0 -> ( A5 ) 
 A1 -> . 
 A1 -> A0 
-A2 -> A3 A5 
-A2 -> A4 A3 
 A4 -> A1 
 A4 -> A4 A1 
-A5 -> A4 
-A5 -> A0 A2 
 A5 -> A0 
+A5 -> A4 
