@@ -1,5 +1,5 @@
 #!/bin/bash
-PREFIX="java -cp ../dist/joint-rna-compression-with-dependencies.jar" 
+PREFIX="java -cp ./dist/joint-rna-compression-with-dependencies.jar" 
 for k in {1..15}
 do
 	$PREFIX compression.grammargenerator.ExhaustiveGrammarExplorer 2 $k inf dowell-benchmark-10-percent
