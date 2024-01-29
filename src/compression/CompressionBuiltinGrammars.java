@@ -72,7 +72,7 @@ public class CompressionBuiltinGrammars {
         csvHeader.add("Grammars");
 
         List<String> firstRow=new ArrayList<>();
-        firstRow.add("nBases ");
+        firstRow.add("nBases");
         for(RNAWithStructure rnaWithStructure: dataset) {
             csvHeader.add(rnaWithStructure.name);
             firstRow.add(String.format("%d", rnaWithStructure.getNumberOfBases()) + "");
