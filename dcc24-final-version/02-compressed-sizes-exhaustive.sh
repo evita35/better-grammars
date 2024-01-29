@@ -1,5 +1,5 @@
 #!/bin/bash
-PREFIX="java -cp ../dist/joint-rna-compression-with-dependencies.jar" 
+PREFIX="java -cp ./dist/joint-rna-compression-with-dependencies.jar" 
 DATASET="dowell-benchmark-10-percent"
 
 PARAMS=""
